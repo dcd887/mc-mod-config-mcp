@@ -1,0 +1,32 @@
+{
+  "name": "mc-mod-config-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Minecraft mod configuration file management, validation, and comparison",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "bin": {
+    "mc-mod-config-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "test:unit": "node --test --test-force-exit __tests__/unit.test.ts",
+    "test": "npm run test:unit",
+    "test:all": "npm run test:unit"
+  },
+  "keywords": ["minecraft", "mcp", "mod", "config", "fabric", "forge"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.2"
+  }
+}
