@@ -8,7 +8,7 @@
     "mc-mod-config-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && copy src\\mod-defaults.json dist\\mod-defaults.json /Y",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test:unit": "node --test --test-force-exit __tests__/unit.test.ts",

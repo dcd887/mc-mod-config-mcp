@@ -1,0 +1,24 @@
+{
+  "defaults": {
+    "sodium": {
+      "name": "Sodium",
+      "fallbackConfig": { "render_distance": 8, "advanced": { "memory_trash_limit": 256 } }
+    },
+    "optifine": {
+      "name": "OptiFine",
+      "fallbackConfig": { "Fps": "normal", "Graphics": " fancy" }
+    },
+    "phosphor": {
+      "name": "Phosphor",
+      "fallbackConfig": { "light_pipeline": true }
+    },
+    "lithium": {
+      "name": "Lithium",
+      "fallbackConfig": {}
+    },
+    "fabric-api": {
+      "name": "Fabric API",
+      "fallbackConfig": {}
+    }
+  }
+}

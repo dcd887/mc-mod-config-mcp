@@ -4,6 +4,59 @@ import { z } from "zod";
 import fs from "node:fs";
 import path from "node:path";
 
+// ── Config（全部可被环境变量覆盖，默认值保证任何环境开箱即用、可移植）───────
+
+/** 从项目根目录的 .env 读取键值到 process.env（仅当未设置时写入，不引入依赖）。 */
+function loadEnvFile(): void {
+  try {
+    const envPath = path.join(__dirname, "..", ".env");
+    if (!fs.existsSync(envPath)) return;
+    for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
+      const t = line.trim();
+      if (!t || t.startsWith("#")) continue;
+      const eq = t.indexOf("=");
+      if (eq > 0) {
+        const k = t.slice(0, eq).trim();
+        const v = t.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+        if (k && !(k in process.env)) process.env[k] = v;
+      }
+    }
+  } catch { /* .env 缺失/损坏时忽略 */ }
+}
+loadEnvFile();
+
+const CONFIG = {
+  // 支持扫描/解析的配置文件扩展名（逗号分隔，可扩展自定义格式的扩展名）
+  extensions: (process.env.MOD_CONFIG_EXTENSIONS || "cfg,toml,json")
+    .split(",").map((s) => s.trim().toLowerCase().replace(/^\./, "")).filter(Boolean),
+  // 单个配置文件大小上限（MB），超过则跳过，防止误读超大/二进制文件
+  maxFileMb: parseFloat(process.env.MOD_CONFIG_MAX_FILE_MB || "50") || 50,
+  // 校验时字符串值长度告警阈值
+  maxStringLen: parseInt(process.env.MOD_CONFIG_MAX_STRING_LEN || "500", 10) || 500,
+};
+
+// ── 已知模组默认配置：优先读取外部 mod-defaults.json（可扩展），内置为兜底 ──
+const BUILTIN_MOD_DEFAULTS: Record<string, { name: string; fallbackConfig: Record<string, any> }> = {
+  "sodium": { name: "Sodium", fallbackConfig: { render_distance: 8, advanced: { memory_trash_limit: 256 } } },
+  "optifine": { name: "OptiFine", fallbackConfig: { Fps: "normal", Graphics: " fancy" } },
+  "phosphor": { name: "Phosphor", fallbackConfig: { light_pipeline: true } },
+  "lithium": { name: "Lithium", fallbackConfig: {} },
+  "fabric-api": { name: "Fabric API", fallbackConfig: {} },
+};
+
+function loadModDefaults(): Record<string, { name: string; fallbackConfig: Record<string, any> }> {
+  try {
+    const p = path.join(__dirname, "mod-defaults.json");
+    if (!fs.existsSync(p)) return BUILTIN_MOD_DEFAULTS;
+    const parsed = JSON.parse(fs.readFileSync(p, "utf8"));
+    const external = parsed?.defaults && typeof parsed.defaults === "object" ? parsed.defaults : {};
+    // 合并：外部 JSON 可覆盖内置、可新增模组
+    return { ...BUILTIN_MOD_DEFAULTS, ...external };
+  } catch { /* 损坏时回退内置 */ }
+  return BUILTIN_MOD_DEFAULTS;
+}
+const KNOWN_MOD_DEFAULTS = loadModDefaults();
+
 /**
  * mc-mod-config-mcp — Minecraft Mod Configuration File Management MCP Server
  *
@@ -135,8 +188,15 @@ function readConfigFile(filePath: string): { content: Record<string, any>; forma
         content = JSON.parse(raw);
         break;
       default:
-        issues.push(`Unsupported config format: ${ext}`);
-        return { content: {}, format: ext.replace(".", ""), issues };
+        if (CONFIG.extensions.includes(ext.replace(".", ""))) {
+          // 用户通过 MOD_CONFIG_EXTENSIONS 扩展的自定义扩展名，按纯文本读取兜底
+          format = ext.replace(".", "");
+          content = { raw: raw };
+          issues.push(`Custom extension .${ext} — read as raw text`);
+        } else {
+          issues.push(`Unsupported config format: ${ext}`);
+          return { content: {}, format: ext.replace(".", ""), issues };
+        }
     }
   } catch (e: any) {
     issues.push(`Parse error: ${e.message}`);
@@ -159,13 +219,14 @@ function scanConfigDir(configDir: string): Array<{ path: string; file: string; m
       if (entry.isDirectory()) {
         walk(full, rel);
       } else if (entry.isFile()) {
-        const ext = path.extname(entry.name).toLowerCase();
-        if ([".cfg", ".toml", ".json"].includes(ext)) {
+        const ext = path.extname(entry.name).toLowerCase().replace(".", "");
+        if (CONFIG.extensions.includes(ext)) {
           try {
             const stat = fs.statSync(full);
+            if (stat.size > CONFIG.maxFileMb * 1024 * 1024) continue; // 超大文件跳过
             const modId = rel.split(/[/\\]/)[0];
-            const formatMap: Record<string, string> = { ".cfg": "forge_cfg", ".toml": "toml", ".json": "json" };
-            configs.push({ path: full, file: rel, modId, format: formatMap[ext] || ext.replace(".", ""), size: stat.size });
+            const formatMap: Record<string, string> = { "cfg": "forge_cfg", "toml": "toml", "json": "json" };
+            configs.push({ path: full, file: rel, modId, format: formatMap[ext] || ext, size: stat.size });
           } catch { /* ignore */ }
         }
       }
@@ -189,14 +250,7 @@ function buildModRegistry(modsDir: string): Map<string, { version?: string; name
   return registry;
 }
 
-// ── Built-in known mod defaults ──────────────────────────────────────
-const KNOWN_MOD_DEFAULTS: Record<string, { name: string; fallbackConfig: Record<string, any> }> = {
-  "sodium": { name: "Sodium", fallbackConfig: { render_distance: 8, advanced: { memory_trash_limit: 256 } } },
-  "optifine": { name: "OptiFine", fallbackConfig: { Fps: "normal", Graphics: " fancy" } },
-  "phosphor": { name: "Phosphor", fallbackConfig: { light_pipeline: true } },
-  "lithium": { name: "Lithium", fallbackConfig: {} },
-  "fabric-api": { name: "Fabric API", fallbackConfig: {} },
-};
+// ── Built-in known mod defaults（已迁移至文件顶部，由 loadModDefaults 加载外部 mod-defaults.json）──
 
 function getKnownModInfo(modId: string): { name: string; hasConfig: boolean; fallbackConfig: Record<string, any> } | null {
   const info = KNOWN_MOD_DEFAULTS[modId.toLowerCase()];
@@ -224,7 +278,7 @@ function validateConfigValues(config: Record<string, any>, filePath: string): Ar
       if (typeof v === "number" && (isNaN(v) || !isFinite(v))) {
         findings.push({ key: fullKey, issue: "Invalid numeric value", severity: "error" });
       }
-      if (typeof v === "string" && v.length > 500) {
+      if (typeof v === "string" && v.length > CONFIG.maxStringLen) {
         findings.push({ key: fullKey, issue: `String value very long (${v.length} chars)`, severity: "warning" });
       }
       if (typeof v === "object" && v !== null && !Array.isArray(v)) {

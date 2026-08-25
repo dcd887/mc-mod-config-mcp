@@ -62,11 +62,27 @@ Add to your MCP client config:
   "mcpServers": {
     "mc-mod-config": {
       "command": "node",
-      "args": ["<path/to/mc-mod-config-mcp>/dist/index.js"]
+      "args": ["${MC_MOD_CONFIG_ROOT}/dist/index.js"]
     }
   }
 }
 ```
+
+> **Path note:** Replace `${MC_MOD_CONFIG_ROOT}` with the absolute path to this project's root directory. On Windows, use forward slashes: `["C:/path/to/mc-mod-config-mcp/dist/index.js"]`（把 `C:/path/to/` 替换成你的实际路径）。 Alternatively, set an environment variable `MC_MOD_CONFIG_ROOT` pointing to the project root and use the variable in the config.
+
+## Configuration
+
+本工具零配置即可用（内置默认值，任何环境开箱即用）。以下项目可通过环境变量或项目根目录 `.env` 文件覆盖（复制 `.env.example` 为 `.env`）：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `MOD_CONFIG_EXTENSIONS` | `cfg,toml,json` | 支持扫描/解析的配置文件扩展名（逗号分隔，可扩展自定义扩展名） |
+| `MOD_CONFIG_MAX_FILE_MB` | `50` | 单个配置文件大小上限（MB），超过则跳过 |
+| `MOD_CONFIG_MAX_STRING_LEN` | `500` | 校验时字符串值长度告警阈值 |
+
+**扩展已知模组默认配置库**：编辑 `src/mod-defaults.json`（构建后为 `dist/mod-defaults.json`），在 `defaults` 下新增/覆盖模组即可，无需改代码。例如新增 `"iris": { "name": "Iris", "fallbackConfig": { "enableShaders": true } }`。
+
+优先级：环境变量 > `.env` 文件 > 内置默认值。改动后重启 MCP server 生效。
 
 ## Usage Examples
 
