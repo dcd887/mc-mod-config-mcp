@@ -1,5 +1,7 @@
 # mc-mod-config-mcp
 
+[![M8ven Verified](https://m8ven.ai/badge/mcp/dcd887/mc-mod-config-mcp?variant=verified)](https://m8ven.ai/mcp/dcd887/mc-mod-config-mcp?s=readme)
+
 MCP server for Minecraft mod configuration file management. Reads, validates, compares, and cleans up `.cfg`, `.toml`, and `.json` config files from modpacks.
 
 ## Tools
