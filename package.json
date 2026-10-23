@@ -8,14 +8,21 @@
     "mc-mod-config-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc && copy src\\mod-defaults.json dist\\mod-defaults.json /Y",
+    "build": "tsc && node -e \"require('fs').copyFileSync('src/mod-defaults.json','dist/mod-defaults.json')\"",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test:unit": "node --test --test-force-exit __tests__/unit.test.ts",
     "test": "npm run test:unit",
     "test:all": "npm run test:unit"
   },
-  "keywords": ["minecraft", "mcp", "mod", "config", "fabric", "forge"],
+  "keywords": [
+    "minecraft",
+    "mcp",
+    "mod",
+    "config",
+    "fabric",
+    "forge"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
